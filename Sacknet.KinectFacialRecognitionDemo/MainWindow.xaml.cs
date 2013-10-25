@@ -110,7 +110,9 @@ namespace Sacknet.KinectFacialRecognitionDemo
                     this.targetFaces.Add(new BitmapSourceTargetFace
                     {
                         Image = (Bitmap)face.GrayFace.Clone(),
-                        Key = this.NameField.Text
+                        Key = this.NameField.Text,
+                        ID = RecognitionUtility.GenerateHash(this.NameField.Text),
+                        Face3DPoints = face.TrackingResults.Face3DPoints
                     });
 
                     this.takeTrainingImage = false;
@@ -124,6 +126,7 @@ namespace Sacknet.KinectFacialRecognitionDemo
             this.Video.Source = LoadBitmap(e.ProcessedBitmap);
         }
 
+        
         /// <summary>
         /// Starts the training image countdown
         /// </summary>
@@ -164,6 +167,8 @@ namespace Sacknet.KinectFacialRecognitionDemo
                     return this.bitmapSource;
                 }
             }
+
+            
         }
     }
 }

@@ -178,13 +178,15 @@ namespace Sacknet.KinectFacialRecognition
 
                     if (faceTrackFrame.TrackSuccessful)
                     {
-                        var trackingResults = new TrackingResults(faceTrackFrame.GetProjected3DShape());
+                        // knu2: will pass faceTrackFrame instead 
+                        
+                        var trackingResults = new TrackingResults(faceTrackFrame);
 
                         lock (this.ProcessingMutex)
                         {
                             if (this.Processor != null && this.ProcessingEnabled)
                             {
-                                this.Processor.Process(result, trackingResults);
+                                this.Processor.ProcessX(result, trackingResults);
                             }
                         }
                     }

@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
+using Knu2.Classifier;
+using Emgu.CV;
+using Microsoft.Kinect.Toolkit.FaceTracking;
 
 namespace Sacknet.KinectFacialRecognition
 {
@@ -11,6 +14,10 @@ namespace Sacknet.KinectFacialRecognition
     /// </summary>
     public class ManagedEigenObjectRecognizer
     {
+
+        ERTreesClassifier forest;
+        Dictionary<int, string> nameLookup;
+
         /// <summary>
         /// Initializes a new instance of the <see cref="ManagedEigenObjectRecognizer"/> class.
         /// </summary>
@@ -45,6 +52,23 @@ namespace Sacknet.KinectFacialRecognition
             this.AverageImage = averageImage;
             this.Labels = targetFaces.Select(x => x.Key).ToArray();
             this.EigenDistanceThreshold = eigenDistanceThreshold;
+
+            nameLookup = new Dictionary<int, string>();
+            foreach (var face in targetFaces)
+            {
+                
+                nameLookup[RecognitionUtility.Shorten(face.ID)] = face.Key;
+            }
+
+            try
+            {
+                forest = new ERTreesClassifier();
+                forest.Train(targetFaces);
+            }
+            catch (NullReferenceException)
+            {
+                // will occur if there is no 3d face points
+            }
         }
 
         /// <summary>
@@ -164,6 +188,83 @@ namespace Sacknet.KinectFacialRecognition
             this.FindMostSimilarObject(image, out index, out eigenDistance, out label);
 
             return (this.EigenDistanceThreshold <= 0 || eigenDistance < this.EigenDistanceThreshold) ? this.Labels[index] : string.Empty;
+        }
+
+        /// <summary>
+        /// Try to recognize the given face 3D points
+        /// </summary>
+        /// <param name="face3DPoints">the collection of face 3D points</param>
+        /// <returns>the name of the face</returns>
+        public string Recognize(EnumIndexableCollection<FeaturePoint, Vector3DF> face3DPoints)
+        {
+            var id = forest.Recognize(face3DPoints);
+            Debug.WriteLine("Recognized ID = " + id); 
+            return nameLookup[RecognitionUtility.Shorten(id)];
+        }
+    }
+
+    /// <summary>
+    /// Contains extension methods to support the different classifier methods
+    /// </summary>
+    public static class ClassifierHelper
+    {
+        /// <summary>
+        /// Prepares training data and calls ERTreesClassifier.Train method
+        /// </summary>
+        /// <param name="forest">ERTreesClassifier object</param>
+        /// <param name="targetFaces">collection of targetFaces</param>
+        static public void Train(this ERTreesClassifier forest, IEnumerable<TargetFace> targetFaces)
+        {
+            var first = targetFaces.ElementAt(0);
+            var varCount = first.Face3DPoints.Count; // x, y, z 
+
+            Matrix<float> data, responses;            
+            data = new Matrix<float>(targetFaces.Count(), varCount*3);
+            responses = new Matrix<float>(targetFaces.Count(), 1);
+
+            int i = 0;
+
+            foreach (var face in targetFaces)
+            {
+                for (int j = 0; j < varCount; j++)
+                {
+                    data[i, j * 3] = face.Face3DPoints[j].X;
+                    data[i, j * 3 + 1] = face.Face3DPoints[j].Y;
+                    data[i, j * 3 + 2] = face.Face3DPoints[j].Z;
+                }
+
+                responses[i, 0] = (float)face.ID;
+                i++;
+                
+            }
+            var numClasses = targetFaces.Distinct().Count();
+
+
+            forest.Train(data, responses, numClasses);
+        }
+
+        /// <summary>
+        /// Prepares the 3d face points and calls the ERTreesClassifier.Predict method
+        /// </summary>
+        /// <param name="forest">ERTreesClassifier object</param>
+        /// <param name="face3DPoints">3d points of the face</param>
+        /// <returns>ID of the face</returns>
+        static public int Recognize(this ERTreesClassifier forest, EnumIndexableCollection<FeaturePoint, Vector3DF> face3DPoints)
+        {           
+            var varCount = face3DPoints.Count; // x, y, z 
+
+            Matrix<float> data;
+            data = new Matrix<float>(1, face3DPoints.Count()*3);
+            
+            for (int j = 0; j < varCount; j++)
+            {
+                data[0, j * 3] = face3DPoints[j].X;
+                data[0, j * 3 + 1] = face3DPoints[j].Y;
+                data[0, j * 3 + 2] = face3DPoints[j].Z;
+            }
+
+            var r = forest.Predict(data);
+            return (int)r;
         }
     }
 }

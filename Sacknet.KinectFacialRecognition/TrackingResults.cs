@@ -10,6 +10,8 @@ namespace Sacknet.KinectFacialRecognition
     /// </summary>
     public class TrackingResults
     {
+private   FaceTrackFrame faceTrackFrame;
+
         /// <summary>
         /// Initializes a new instance of the TrackingResults class
         /// </summary>
@@ -20,9 +22,11 @@ namespace Sacknet.KinectFacialRecognition
         /// <summary>
         /// Initializes a new instance of the TrackingResults class from a set of Kinect face points
         /// </summary>
-        public TrackingResults(EnumIndexableCollection<FeaturePoint, PointF> facePoints)
+        //public TrackingResults(EnumIndexableCollection<FeaturePoint, PointF> facePoints)
+        public TrackingResults(FaceTrackFrame faceTrackFrame)
         {
-            this.FacePoints = this.FaceBoundaryPoints(facePoints);
+            this.FacePoints = this.FaceBoundaryPoints(faceTrackFrame.GetProjected3DShape());
+            this.Face3DPoints = faceTrackFrame.Get3DShape();
 
             // Calculate facerect manually from facepoints
             var rectX = this.FacePoints.Min(x => x.X);
@@ -33,11 +37,18 @@ namespace Sacknet.KinectFacialRecognition
             this.FaceRect = new System.Drawing.Rectangle(rectX, rectY, rectWidth, rectHeight);
         }
 
+
+
         /// <summary>
-        /// Gets or sets the 3D points of the face
+        /// Gets or sets the 2D points of the face
         /// </summary>
         public List<System.Drawing.Point> FacePoints { get; set; }
 
+        /// <summary>
+        /// Gets or sets the 3D points of the face
+        /// </summary>
+        public EnumIndexableCollection<FeaturePoint, Vector3DF> Face3DPoints { get; set; }
+        
         /// <summary>
         /// Gets or sets the face bounding box
         /// </summary>
